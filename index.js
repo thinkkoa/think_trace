@@ -122,11 +122,12 @@ module.exports = function (options) {
         // response finish
         ctx.res.once('finish', function () {
             //
-            let times = (Date.now() - ctx.startTime) || 0, style = '\x1B[32m';
+            let times = (Date.now() - ctx.startTime) || 0, style = '\x1B[32m', method = 'info';
             if (ctx.status >= 400) {
                 style = '\x1B[31m';
+                method = 'error';
             }
-            console.info(` ${style}${ctx.method.toUpperCase()}  ${ctx.status}  ${ctx.originalPath || '/'}  ${times}ms\x1B[39m`);
+            console[method](` ${style}${ctx.method.toUpperCase()}  ${ctx.status}  ${ctx.originalPath || '/'}  ${times}ms\x1B[39m`);
         });
 
         // try /catch
