@@ -103,6 +103,9 @@ module.exports = function (options) {
         lib.define(think, 'logger', logger);
         let path = options.log_path || __dirname;
         lib.define(think, 'addLogs', function(name, msgs) {
+            if (typeof msgs === 'object') {
+                msgs = JSON.stringify(msgs);
+            }
             return logger.write(path, name, msgs);
         });
         //触发绑定记录日志
