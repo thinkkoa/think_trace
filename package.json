@@ -1,6 +1,6 @@
 {
   "name": "think_trace",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Trace and logger for ThinkKoa.",
   "main": "index.js",
   "scripts": {

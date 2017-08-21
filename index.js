@@ -45,7 +45,7 @@ const catcher = function (ctx, options, err) {
         }
         think.app.emit('error', err, ctx);
     }
-    return;
+    return think.prevent();
 };
 
 /**
@@ -112,7 +112,7 @@ module.exports = function (options) {
         let level = options.log_level || [];
         logOutput(path, level, options.log);
     });
-
+    /*eslint-disable consistent-return */
     let tmr;
     return function * (ctx, next) {
         //set ctx start time
@@ -144,10 +144,9 @@ module.exports = function (options) {
                 ctx.throw(ctx.status, ctx.url);
             }
         } catch (err) {
-            catcher(ctx, options, err);
+            return catcher(ctx, options, err);
         }
         tmr && clearTimeout(tmr);
-        return;
     };
 };
 
