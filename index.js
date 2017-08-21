@@ -44,8 +44,9 @@ const catcher = function (ctx, options, err) {
                 break;
         }
         think.app.emit('error', err, ctx);
+        return think.prevent();
     }
-    return think.prevent();
+    return null;
 };
 
 /**
@@ -145,8 +146,9 @@ module.exports = function (options) {
             }
         } catch (err) {
             return catcher(ctx, options, err);
+        } finally {
+            tmr && clearTimeout(tmr);
         }
-        tmr && clearTimeout(tmr);
     };
 };
 
