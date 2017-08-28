@@ -122,6 +122,10 @@ module.exports = function (options) {
         lib.define(ctx, 'version', ctx.req.httpVersion);
         //originalPath
         lib.define(ctx, 'originalPath', ctx.path);
+        //auto send security header
+        ctx.set('X-Powered-By', 'ThinkKoa');
+        ctx.set('X-Content-Type-Options', 'nosniff');
+        ctx.set('X-XSS-Protection', '1;mode=block');
 
         // response finish
         ctx.res.once('finish', function () {
