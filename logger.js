@@ -94,7 +94,7 @@ logger.write = function (path, name, msgs) {
             }
             msgs = ['[' + lib.datetime('', '') + ']'].concat([].slice.call(msgs));
             let message = util.format.apply(null, msgs) + '\n';
-            fs.appendFile(file, message);
+            fs.appendFile(file, message, function(){});
         }
     } catch (e) {}
 };
