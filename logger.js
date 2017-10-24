@@ -38,44 +38,57 @@ const styles = {
  * 
  * 
  * @param {any} type 
- * @param {any} args 
  * @param {any} css 
+ * @param {any} args 
  * @returns 
  */
-const show = function (type, args, css) {
-    let params = [], i = 0, len = args.length;
-    css = css || 'grey';
-    let style = styles[css] || [];
-    params.push(style[0]);
-    params.push(`[${lib.datetime('', '')}]`);
-    params.push(`[${type.toUpperCase()}]`);
-    for (; i < len; i++) {
-        if (lib.isError(args[i])) {
-            params.push(args[i].stack);
-        } else if (typeof args[i] === 'object') {
-            params.push(JSON.stringify(args[i]));
+const show = function (type, css, args) {
+    try {
+        let params = [], i = 0, len = args.length;
+        css = css || 'grey';
+        let style = styles[css] || [];
+        params.push(style[0]);
+        params.push(`[${lib.datetime('', '')}]`);
+        params.push(`[${type.toUpperCase()}]`);
+        for (; i < len; i++) {
+            if (lib.isError(args[i])) {
+                params.push(args[i].stack);
+            } else if (typeof args[i] === 'object') {
+                params.push(JSON.stringify(args[i]));
+            } else {
+                params.push(args[i]);
+            }
+        }
+        params.push(style[1]);
+        console.log.apply(null, params);
+    } catch (e){}
+    return true;
+};
+
+/**
+ * 
+ * 
+ * @param {any} type 
+ * @param {object} options 
+ * @param {any} args 
+ * @returns 
+ */
+const logger = function (type, options, args) {
+    if (debug) {
+        if (logger[type]) {
+            logger[type](...args);
         } else {
-            params.push(args[i]);
+            logger.info(...args);
         }
     }
-    params.push(style[1]);
-    return console.log.apply(null, params);
-};
-
-/**
- * 
- * 
- * @returns 
- */
-const logger = function (type, css, ...args) {
-    if (debug && lib.isString(type)) {
-        return show(type || 'INFO', args, css || 'grey');
+    if (options && options.record){
+        logger.write(options.path, type, ...args);
     }
-    return null;
+    return true;
 };
 
 /**
- * 
+ * write log file
  * 
  * @param {any} path 
  * @param {any} name 
@@ -87,62 +100,66 @@ logger.write = function (path, name, msgs) {
         if (!lib.isEmpty(msgs)) {
             lib.isDir(path) || lib.mkDir(path);
             let file = `${path}${lib.sep}${name ? name + '_' : ''}${lib.datetime('', 'yyyy-mm-dd')}.log`;
-            if (lib.isError(msgs)) {
-                msgs = [msgs.stack];
-            } else if (lib.isObject(msgs)) {
-                msgs = [JSON.stringify(msgs)];
+            let params = [];
+            if(lib.isArray(msgs)){
+                params = msgs;
+            } else if (lib.isError(msgs)) {
+                params = [msgs.stack];
+            } else {
+                params = [msgs];
             }
-            msgs = ['[' + lib.datetime('', '') + ']'].concat([].slice.call(msgs));
-            let message = util.format.apply(null, msgs) + '\n';
-            fs.appendFile(file, message, function(){});
+            params = ['[' + lib.datetime('', '') + ']'].concat([].slice.call(params));
+            params = util.format.apply(null, params) + '\n';
+            fs.appendFile(file, params, function(){});
         }
     } catch (e) {}
+    return true;
 };
 
 /**
- * 
+ * log info
  * 
  * @returns 
  */
 logger.info = function () {
     if (debug) {
-        return show('INFO', arguments, 'grey');
+        return show('INFO', 'blue', arguments);
     }
     return null;
 };
 
 /**
- * 
+ * log sucess info
  * 
  * @returns 
  */
 logger.success = function () {
     if (debug) {
-        return show('SUCCESS', arguments, 'green');
+        return show('SUCCESS', 'green', arguments);
     }
     return null;
 };
 
 /**
- * 
+ * log warnning
  * 
  * @returns 
  */
 logger.warn = function () {
     if (debug) {
-        return show('WARN', arguments, 'yellow');
+        return show('WARN', 'yellow', arguments);
     }
     return null;
 };
 
 /**
- * 
+ * log error
  * 
  * @returns 
  */
 logger.error = function () {
     if (debug) {
-        return show('ERROR', arguments, 'red');
+        return show('ERROR', 'red', arguments);
     }
     return null;
 };

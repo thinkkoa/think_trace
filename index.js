@@ -74,10 +74,10 @@ const logOutput = function (path, level = [], record = false) {
     ['info', 'warn', 'error', 'success'].map(item => {
         console[item] = function () {
             try {
-                logger[item](...arguments);
-                if (record && level.indexOf(item) > -1) {
-                    logger.write(path, item, arguments);
+                if (level.indexOf(item) === -1) {
+                    record = false;
                 }
+                logger(item, { path: path, record: record }, arguments);
             } catch (e) { }
         };
     });
@@ -103,7 +103,7 @@ module.exports = function (options) {
     think.app.once('appReady', () => {
         lib.define(think, 'logger', logger);
         let path = options.log_path || __dirname;
-        lib.define(think, 'addLogs', function(name, msgs) {
+        lib.define(think, 'addLogs', function (name, msgs) {
             if (typeof msgs === 'object') {
                 msgs = JSON.stringify(msgs);
             }
@@ -115,7 +115,7 @@ module.exports = function (options) {
     });
     /*eslint-disable consistent-return */
     let tmr;
-    return function * (ctx, next) {
+    return function* (ctx, next) {
         //set ctx start time
         lib.define(ctx, 'startTime', Date.now());
         //http version
@@ -130,12 +130,15 @@ module.exports = function (options) {
         // response finish
         ctx.res.once('finish', function () {
             //
-            let times = (Date.now() - ctx.startTime) || 0, style = '\x1B[32m', method = 'info';
+            let times = (Date.now() - ctx.startTime) || 0,
+                // style = '\x1B[32m', 
+                method = 'info';
             if (ctx.status >= 400) {
-                style = '\x1B[31m';
+                // style = '\x1B[31m';
                 method = 'error';
             }
-            console[method](` ${style}${ctx.method.toUpperCase()}  ${ctx.status}  ${ctx.originalPath || '/'}  ${times}ms\x1B[39m`);
+            console[method](` ${ctx.method.toUpperCase()}  ${ctx.status}  ${ctx.originalPath || '/'}  ${times}ms`);
+            // console[method](` ${style}${ctx.method.toUpperCase()}  ${ctx.status}  ${ctx.originalPath || '/'}  ${times}ms\x1B[39m`);
         });
 
         // try /catch
