@@ -61,7 +61,7 @@ const show = function (type, css, args) {
         }
         params.push(style[1]);
         console.log.apply(null, params);
-    } catch (e){}
+    } catch (e) { }
     return true;
 };
 
@@ -77,11 +77,13 @@ const logger = function (type, options, args) {
     if (debug) {
         if (logger[type]) {
             logger[type](...args);
+        } else if (options.css) {
+            show(type, options.css, args);
         } else {
             logger.info(...args);
         }
     }
-    if (options && options.record){
+    if (options && options.record) {
         logger.write(options.path, type, ...args);
     }
     return true;
@@ -101,7 +103,7 @@ logger.write = function (path, name, msgs) {
             lib.isDir(path) || lib.mkDir(path);
             let file = `${path}${lib.sep}${name ? name + '_' : ''}${lib.datetime('', 'yyyy-mm-dd')}.log`;
             let params = [];
-            if(lib.isArray(msgs)){
+            if (lib.isArray(msgs)) {
                 params = msgs;
             } else if (lib.isError(msgs)) {
                 params = [msgs.stack];
@@ -110,9 +112,9 @@ logger.write = function (path, name, msgs) {
             }
             params = ['[' + lib.datetime('', '') + ']'].concat([].slice.call(params));
             params = util.format.apply(null, params) + '\n';
-            fs.appendFile(file, params, function(){});
+            fs.appendFile(file, params, function () { });
         }
-    } catch (e) {}
+    } catch (e) { }
     return true;
 };
 
