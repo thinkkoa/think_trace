@@ -7,7 +7,7 @@
  */
 const lib = require('think_lib');
 const httpError = require('http-errors');
-const logger = require('./logger.js');
+const logger = require('think_logger');
 
 /**
  * error catcher
@@ -151,6 +151,7 @@ module.exports = function (options) {
             if (ctx.status >= 400) {
                 ctx.throw(ctx.status, ctx.url);
             }
+            return null;
         } catch (err) {
             return catcher(ctx, options, err);
         } finally {

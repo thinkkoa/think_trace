@@ -1,6 +1,6 @@
 {
   "name": "think_trace",
-  "version": "1.0.8",
+  "version": "1.1.0",
   "description": "Trace and logger for ThinkKoa.",
   "main": "index.js",
   "scripts": {
@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "http-errors": "^1.6.2",
-    "think_lib": "^1.x.x"
+    "think_lib": "^1.x.x",
+    "think_logger": "^1.2.0"
   }
 }
