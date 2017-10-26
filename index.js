@@ -64,26 +64,6 @@ const timer = function (tmr, timeout) {
 };
 
 /**
- * 日志输出
- * 包括格式化输出到控制台以及记录日志文件
- * @param {any} path 
- * @param {any} [level=[]] 
- * @param {boolean} [record=false] 
- */
-const logOutput = function (path, level = [], record = false) {
-    ['info', 'warn', 'error', 'success'].map(item => {
-        console[item] = function () {
-            try {
-                if (level.indexOf(item) === -1) {
-                    record = false;
-                }
-                logger(item, { path: path, record: record }, arguments);
-            } catch (e) { }
-        };
-    });
-};
-
-/**
  * default options
  */
 const defaultOptions = {
@@ -91,10 +71,6 @@ const defaultOptions = {
     error_code: 500, //报错时的状态码
     error_no_key: 'errno', //错误号的key
     error_msg_key: 'errmsg', //错误消息的key
-
-    log: true, //是否存储日志
-    log_path: think.root_path + '/logs', //存储日志文件目录
-    log_level: ['warn', 'error'], //日志存储级别, 'info', 'warn', 'error', 'success'
 };
 
 module.exports = function (options) {
@@ -109,9 +85,6 @@ module.exports = function (options) {
             }
             return logger.write(path, name, msgs);
         });
-        //触发绑定记录日志
-        let level = options.log_level || [];
-        logOutput(path, level, options.log);
     });
     /*eslint-disable consistent-return */
     let tmr;
@@ -137,7 +110,7 @@ module.exports = function (options) {
                 // style = '\x1B[31m';
                 method = 'error';
             }
-            console[method](` ${ctx.method.toUpperCase()}  ${ctx.status}  ${ctx.originalPath || '/'}  ${times}ms`);
+            logger[method](` ${ctx.method.toUpperCase()}  ${ctx.status}  ${ctx.originalPath || '/'}  ${times}ms`);
             // console[method](` ${style}${ctx.method.toUpperCase()}  ${ctx.status}  ${ctx.originalPath || '/'}  ${times}ms\x1B[39m`);
         });
 

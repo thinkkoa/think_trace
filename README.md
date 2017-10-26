@@ -27,10 +27,6 @@ config: { //中间件配置
         error_code: 500, //报错时的状态码
         error_no_key: 'errno', //错误号的key
         error_msg_key: 'errmsg', //错误消息的key
-
-        log: true, //是否存储日志
-        log_path: think.root_path + '/logs', //存储日志文件目录
-        log_level: ['warn', 'error'], //日志存储级别, 'info', 'warn', 'error', 'success'
     }
 }
 ```
