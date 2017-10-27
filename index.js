@@ -75,18 +75,7 @@ const defaultOptions = {
 
 module.exports = function (options) {
     options = options ? lib.extend(defaultOptions, options, true) : defaultOptions;
-    //logger仅执行一次
-    think.app.once('appReady', () => {
-        lib.define(think, 'logger', logger);
-        let path = options.log_path || __dirname;
-        lib.define(think, 'addLogs', function (name, msgs) {
-            if (typeof msgs === 'object') {
-                msgs = JSON.stringify(msgs);
-            }
-            return logger.write(path, name, msgs);
-        });
-    });
-    /*eslint-disable consistent-return */
+    
     let tmr;
     return function* (ctx, next) {
         //set ctx start time
@@ -105,7 +94,7 @@ module.exports = function (options) {
             //
             let times = (Date.now() - ctx.startTime) || 0,
                 // style = '\x1B[32m', 
-                method = 'info';
+                method = 'success';
             if (ctx.status >= 400) {
                 // style = '\x1B[31m';
                 method = 'error';
