@@ -12,11 +12,12 @@ const logger = require('think_logger');
 /**
  * error catcher
  * 
+ * @param {any} app 
  * @param {any} ctx 
  * @param {any} options
  * @param {any} err 
  */
-const catcher = function (ctx, options, err) {
+const catcher = function (app, ctx, options, err) {
     if (!think.isPrevent(err)) {
         ctx.status = typeof err.status === 'number' ? err.status : (options.error_code || 500);
         // accepted types
@@ -43,7 +44,8 @@ const catcher = function (ctx, options, err) {
                 ctx.res.end(`Error: ${err.message || ''}`);
                 break;
         }
-        think.app.emit('error', err, ctx);
+        let koa = global.think ? (think.app || {}) : (app.koa || {});
+        koa.emit('error', err, ctx);
         return think.prevent();
     }
     return null;
@@ -73,7 +75,7 @@ const defaultOptions = {
     error_msg_key: 'errmsg', //错误消息的key
 };
 
-module.exports = function (options) {
+module.exports = function (options, app) {
     options = options ? lib.extend(defaultOptions, options, true) : defaultOptions;
     
     let tmr;
@@ -115,7 +117,7 @@ module.exports = function (options) {
             }
             return null;
         } catch (err) {
-            return catcher(ctx, options, err);
+            return catcher(app, ctx, options, err);
         } finally {
             tmr && clearTimeout(tmr);
         }
