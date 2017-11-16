@@ -4,7 +4,7 @@
 [![npm version](https://badge.fury.io/js/think_trace.svg)](https://badge.fury.io/js/think_trace)
 [![Dependency Status](https://david-dm.org/thinkkoa/think_trace.svg)](https://david-dm.org/thinkkoa/think_trace)
 
-Trace and logger for ThinkKoa.
+HTTP error intercept processing for ThinkKoa.
 
 # 安装
 -----

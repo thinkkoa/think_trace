@@ -18,7 +18,7 @@ const logger = require('think_logger');
  * @param {any} err 
  */
 const catcher = function (app, ctx, options, err) {
-    if (!think.isPrevent(err)) {
+    if (!app.isPrevent(err)) {
         ctx.status = typeof err.status === 'number' ? err.status : (options.error_code || 500);
         // accepted types
         switch (ctx.accepts('html', 'text', 'json')) {
@@ -31,8 +31,8 @@ const catcher = function (app, ctx, options, err) {
                 let body = `<!DOCTYPE html><html><head><title>Error - ${ctx.status}</title><meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1.0, maximum-scale=1.0">
             <style>body {padding: 50px 80px;font: 14px 'Microsoft YaHei','微软雅黑',Helvetica,Sans-serif;}h1, h2 {margin: 0;padding: 10px 0;}h1 {font-size: 2em;}h2 {font-size: 1.2em;font-weight: 200;color: #aaa;}pre {font-size: .8em;}</style>
             </head><body><div id="error"><h1>Error</h1><p>Oops! Your visit is rejected!</p>`;
-                // if (think.app_debug || err.expose) {
-                if (think.app_debug) {
+                // if (app.app_debug || err.expose) {
+                if (app.app_debug) {
                     body += `<h2>Message:</h2><pre><code>${err.message || ''}</code></pre><h2>Stack:</h2><pre><code>${err.stack || ''}</code></pre>`;
                 }
                 body += '</div></body></html>';
@@ -44,9 +44,8 @@ const catcher = function (app, ctx, options, err) {
                 ctx.res.end(`Error: ${err.message || ''}`);
                 break;
         }
-        let koa = global.think ? (think.app || {}) : (app.koa || {});
-        koa.emit('error', err, ctx);
-        return think.prevent();
+        app.emit('error', err, ctx);
+        return app.prevent();
     }
     return null;
 };
@@ -79,7 +78,7 @@ module.exports = function (options, app) {
     options = options ? lib.extend(defaultOptions, options, true) : defaultOptions;
     
     let tmr;
-    return function* (ctx, next) {
+    return async function (ctx, next) {
         //set ctx start time
         lib.define(ctx, 'startTime', Date.now());
         //http version
@@ -110,7 +109,7 @@ module.exports = function (options, app) {
         try {
             const timeout = (options.timeout || 30) * 1000;
             // promise.race
-            yield Promise.race([timer(tmr, timeout), next()]);
+            await Promise.race([timer(tmr, timeout), next()]);
             //404 error
             if (ctx.status >= 400) {
                 ctx.throw(ctx.status, ctx.url);
