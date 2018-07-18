@@ -21,10 +21,10 @@ const catcher = function (app, ctx, options, err) {
     if (!app.isPrevent(err)) {
         ctx.status = typeof err.status === 'number' ? err.status : (options.error_code || 500);
         // accepted types
-        switch (ctx.accepts('html', 'text', 'json')) {
+        switch (ctx.accepts('json', 'html', 'text')) {
             case 'json':
                 ctx.type = 'application/json';
-                ctx.res.end(`{"status": 0,"${options.error_no_key || 'errno'}": ${ctx.status},"${options.error_msg_key || 'errmsg'}":"${err.message || ''}","data":{}}`);
+                ctx.res.end(`{"status": 0,"${options.error_no_key || 'code'}": ${ctx.status},"${options.error_msg_key || 'message'}":"${err.message || ''}"}`);
                 break;
             case 'html':
                 ctx.type = 'text/html';
@@ -70,8 +70,8 @@ const timer = function (tmr, timeout) {
 const defaultOptions = {
     timeout: 30, //http请求超时时间,单位s
     error_code: 500, //报错时的状态码
-    error_no_key: 'errno', //错误号的key
-    error_msg_key: 'errmsg', //错误消息的key
+    error_no_key: 'code', //错误号的key
+    error_msg_key: 'message', //错误消息的key
 };
 
 module.exports = function (options, app) {
