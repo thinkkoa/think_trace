@@ -10,6 +10,28 @@ const httpError = require('http-errors');
 const logger = require('think_logger');
 
 /**
+ * 渲染错误模板
+ * 
+ * @param {*} ctx
+ * @param {*} options
+ * @param {*} err
+ * @returns
+ */
+const simpleRend = async function (ctx, options, err) {
+    if (ctx.compile) {
+        ctx._assign = Object.assign(ctx._assign || {}, {
+            [options.error_no_key || 'code']: ctx.status,
+            [options.error_msg_key || 'message']: err.message || ''
+        });
+        logger.info('auto render the error template.');
+        return ctx.compile(`${process.env.ROOT_PATH}${options.error_path}/${ctx.status}.html`, ctx._assign || {});
+    } else {
+        logger.warn('`think_view `middleware is not included, so it only outputs file content.');
+        return lib.readFile(`${process.env.ROOT_PATH}${options.error_path}/${ctx.status}.html`, 'utf-8');
+    }
+};
+
+/**
  * error catcher
  * 
  * @param {any} app 
@@ -17,7 +39,7 @@ const logger = require('think_logger');
  * @param {any} options
  * @param {any} err 
  */
-const catcher = function (app, ctx, options, err) {
+const catcher = async function (app, ctx, options, err) {
     if (!app.isPrevent(err)) {
         ctx.status = typeof err.status === 'number' ? err.status : (options.error_code || 500);
         // accepted types
@@ -28,20 +50,27 @@ const catcher = function (app, ctx, options, err) {
                 break;
             case 'html':
                 ctx.type = 'text/html';
-                let body = `<!DOCTYPE html><html><head><title>Error - ${ctx.status}</title><meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1.0, maximum-scale=1.0">
+                let body = '';
+                if (options.error_path) {
+                    body = await simpleRend(ctx, options, err).catch(e => '');
+                }
+                if (!body) {
+                    body = `<!DOCTYPE html><html><head><title>Error - ${ctx.status}</title><meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1.0, maximum-scale=1.0">
             <style>body {padding: 50px 80px;font: 14px 'Microsoft YaHei','微软雅黑',Helvetica,Sans-serif;}h1, h2 {margin: 0;padding: 10px 0;}h1 {font-size: 2em;}h2 {font-size: 1.2em;font-weight: 200;color: #aaa;}pre {font-size: .8em;}</style>
             </head><body><div id="error"><h1>Error</h1><p>Oops! Your visit is rejected!</p>`;
-                // if (app.app_debug || err.expose) {
-                if (app.app_debug) {
-                    body += `<h2>Message:</h2><pre><code>${err.message || ''}</code></pre><h2>Stack:</h2><pre><code>${err.stack || ''}</code></pre>`;
+                    // if (app.app_debug || err.expose) {
+                    if (app.app_debug) {
+                        body = `${body}<h2>Message:</h2><pre><code>${err.message || ''}</code></pre><h2>Stack:</h2><pre><code>${err.stack || ''}</code></pre>`;
+                    }
+                    body = `${body}</div></body></html>`;
                 }
-                body += '</div></body></html>';
+
                 ctx.res.end(body);
                 break;
             case 'text':
             default:
                 ctx.type = 'text/plain';
-                ctx.res.end(`Error: ${err.message || ''}`);
+                ctx.res.end(`Error: ${err.message || ''} `);
                 break;
         }
         app.emit('error', err, ctx);
@@ -72,11 +101,12 @@ const defaultOptions = {
     error_code: 500, //报错时的状态码
     error_no_key: 'code', //错误号的key
     error_msg_key: 'message', //错误消息的key
+    error_path: '', //错误模板目录配置.该目录下放置404.html、502.html等,框架会自动根据status进行渲染(支持模板变量,依赖think_view中间件;如果think_view中间件未加载,仅输出模板内容)
 };
 
 module.exports = function (options, app) {
     options = options ? lib.extend(defaultOptions, options, true) : defaultOptions;
-    
+
     let tmr;
     return async function (ctx, next) {
         //set ctx start time
@@ -100,8 +130,8 @@ module.exports = function (options, app) {
                 // style = '\x1B[31m';
                 method = 'error';
             }
-            logger[method](` ${ctx.method.toUpperCase()}  ${ctx.status}  ${ctx.originalPath || '/'}  ${times}ms`);
-            // console[method](` ${style}${ctx.method.toUpperCase()}  ${ctx.status}  ${ctx.originalPath || '/'}  ${times}ms\x1B[39m`);
+            logger[method](` ${ctx.method.toUpperCase()} ${ctx.status} ${ctx.originalPath || '/'} ${times} ms`);
+            // console[method](` ${ style } ${ ctx.method.toUpperCase() } ${ ctx.status } ${ ctx.originalPath || '/' } ${ times } ms\x1B[39m`);
         });
 
         // try /catch
@@ -112,7 +142,7 @@ module.exports = function (options, app) {
             await Promise.race([timer(tmr, timeout), next()]);
             //404 error
             if (ctx.status >= 400) {
-                ctx.throw(ctx.status, ctx.url);
+                ctx.throw(ctx.status, ctx.message);
             }
             return null;
         } catch (err) {
