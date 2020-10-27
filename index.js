@@ -262,7 +262,7 @@ module.exports = function (options, app) {
         // response finish
         ctx.res.once('finish', function () {
             let times = '';
-            if (app.app_debug) {
+            if (process.env.APP_DEBUG) {
                 times = `${(Date.now() - ctx.startTime) || 0} ms`;
             }
             logger[(ctx.status >= 400 ? 'error' : 'success')](` ${ctx.method} ${ctx.status} ${ctx.originalPath || '/'} ${times}`);
