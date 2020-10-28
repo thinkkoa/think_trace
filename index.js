@@ -275,9 +275,8 @@ module.exports = function (options, app) {
             const res = await Promise.race([timer(tmr, options.timeout), next()]);
             if (res || ctx.body) {
                 ctx.status = 200;
-                return null;
             }
-            return responseBody(app, ctx, options, res);
+            return responseBody(app, ctx, options, res || ctx.body);
         } catch (err) {
             return catcher(app, ctx, options, err);
         } finally {
