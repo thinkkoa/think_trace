@@ -273,9 +273,9 @@ module.exports = function (options, app) {
         try {
             // promise.race
             const res = await Promise.race([timer(tmr, options.timeout), next()]);
-            //404 error
-            if (res !== undefined && ctx.status === 404) {
+            if (res || ctx.body) {
                 ctx.status = 200;
+                return null;
             }
             return responseBody(app, ctx, options, res);
         } catch (err) {
