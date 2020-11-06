@@ -28,17 +28,17 @@ const htmlRend = async function (app, ctx, options, body) {
         return null;
     }
     let res = '', stack = '';
-    let message = ctx.message;
+    const resBody = {};
+    resBody[options.error_key] = ctx.status;
+    resBody[options.error_msg] = ctx.message;
     if (lib.isError(body)) {
-        message = body.message;
+        resBody[options.error_msg] = body.message;
         stack = body.stack;
     }
+
     if (options.error_path) {
         if (ctx.compile) {
-            ctx._assign = {
-                'status': ctx.status,
-                'message': message || ''
-            };
+            ctx._assign = resBody;
             logger.info('auto render the error template.');
             res = await ctx.compile(`${options.error_path}/${ctx.status}.html`, ctx._assign || {});
         } else {
@@ -46,9 +46,9 @@ const htmlRend = async function (app, ctx, options, body) {
             res = await lib.readFile(`${options.error_path}/${ctx.status}.html`, 'utf-8');
         }
     } else {
-        res = `<!DOCTYPE html><html><head><title>Error - ${ctx.status}</title><meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1.0, maximum-scale=1.0">
+        res = `<!DOCTYPE html><html><head><title>Error - ${resBody[options.error_key]}</title><meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1.0, maximum-scale=1.0">
             <style>body {padding: 50px 80px;font: 14px 'Microsoft YaHei','微软雅黑',Helvetica,Sans-serif;}h1, h2 {margin: 0;padding: 10px 0;}h1 {font-size: 2em;}h2 {font-size: 1.2em;font-weight: 200;color: #aaa;}pre {font-size: .8em;}</style>
-            </head><body><div id="error"><h1>Error</h1><p>Oops! Your visit is rejected!</p><h2>Message:</h2><pre><code>${message || ''}</code></pre>`;
+            </head><body><div id="error"><h1>Error</h1><p>Oops! Your visit is rejected!</p><h2>Message:</h2><pre><code>${resBody[options.error_msg] || ''}</code></pre>`;
         // if (app.app_debug || body.expose) {
         if (app.app_debug) {
             res = `${res}<h2>Stack:</h2><pre><code>${stack || ''}</code></pre>`;
@@ -76,14 +76,16 @@ const jsonRend = function (app, ctx, options, body) {
     if (ctx.status < 400) {
         // body = (body || {});
         if (lib.isJSONObj(body)) {
-            body.status = lib.isTrueEmpty(body.status) ? ctx.status : body.status;
-            body.message = body.message || ctx.message || '';
-            ctx.body = body;
+            ctx.body = {
+                [options.error_key]: lib.isTrueEmpty(body.status) ? ctx.status : body.status,
+                [options.error_msg]: body.message || ctx.message || '',
+                data: body
+            };
         } else {
             ctx.body = {
-                'status': ctx.status,
-                'message': ctx.message || '',
-                'data': body
+                [options.error_key]: ctx.status,
+                [options.error_msg]: ctx.message || '',
+                data: body
             };
         }
         return null;
@@ -92,7 +94,7 @@ const jsonRend = function (app, ctx, options, body) {
     if (lib.isError(body)) {
         message = body.message;
     }
-    return ctx.res.end(`{"status": ${ctx.status},"message":"${message || ''}"}`);
+    return ctx.res.end(`{"${options.error_key}": ${ctx.status},"${options.error_msg}":"${message || ''}"}`);
 };
 
 /**
@@ -128,27 +130,6 @@ const textRend = function (app, ctx, options, body) {
  * @param {*} ctx
  * @param {*} options
  * @param {*} body
- * @returns {*} 
- */
-const defaultRend = function (app, ctx, options, body) {
-    if (ctx.status < 400) {
-        ctx.body = body || ' ';
-        return null;
-    }
-    let message = ctx.message;
-    if (lib.isError(body)) {
-        message = body.message;
-    }
-    return ctx.res.end(`Error: ${message || ''} `);
-};
-
-/**
- *
- *
- * @param {*} app
- * @param {*} ctx
- * @param {*} options
- * @param {*} body
  * @returns
  */
 const responseBody = async function (app, ctx, options, body) {
@@ -163,10 +144,8 @@ const responseBody = async function (app, ctx, options, body) {
                 await htmlRend(app, ctx, options, body);
                 break;
             case 'text':
-                await textRend(app, ctx, options, body);
-                break;
             default:
-                await defaultRend(app, ctx, options, body);
+                await textRend(app, ctx, options, body);
                 break;
         }
     } catch (err) {
@@ -210,27 +189,11 @@ const catcher = async function (app, ctx, options, err) {
 };
 
 /**
- * http timeout timer
- * 
- * @param {any} tmr 
- * @param {any} timeout 
- * @returns 
- */
-const timer = function (tmr, timeout) {
-    return new Promise((resolve, reject) => {
-        const err = new Error('Request Timeout');
-        err.status = 408;
-        tmr = setTimeout(reject, timeout, err);
-        return tmr;
-    });
-};
-
-/**
  * default options
  */
 const defaultOptions = {
     timeout: 10, //http服务超时时间,单位s
-    error_code: 500, //报错时的状态码
+    error_code: 500, //发生错误输出的状态码
     error_key: 'code', //错误码的key
     error_msg: 'message', //错误消息的key
     error_path: '', //错误模板目录配置.该目录下放置404.html、502.html等,框架会自动根据status进行渲染(支持模板变量,依赖think_view中间件;如果think_view中间件未加载,仅输出模板内容)
@@ -246,7 +209,6 @@ module.exports = function (options, app) {
     options.timeout = (options.timeout || 30) * 1000;
     options.encoding = app.config('encoding') || 'utf-8';
 
-    let tmr;
     return async function (ctx, next) {
         //set ctx start time
         lib.define(ctx, 'startTime', Date.now());
@@ -271,17 +233,29 @@ module.exports = function (options, app) {
 
         // try /catch
         try {
+            ctx.res.timeout = null;
             // promise.race
-            const res = await Promise.race([timer(tmr, options.timeout), next()]);
-            if (res || ctx.body) {
+            const res = await Promise.race([new Promise((resolve, reject) => {
+                const err = new Error('Request Timeout');
+                err.status = 408;
+                ctx.res.timeout = setTimeout(reject, options.timeout, err);
+                return;
+            }), next()]);
+            if (res && ctx.status !== 304) {
+                ctx.body = res;
+            }
+            if (ctx.body !== undefined && ctx.status === 404) {
                 ctx.status = 200;
             }
-            return responseBody(app, ctx, options, res || ctx.body);
+            // error
+            if (ctx.status >= 400) {
+                ctx.throw(ctx.status, ctx.url);
+            }
+            return null;
         } catch (err) {
             return catcher(app, ctx, options, err);
         } finally {
-            tmr && clearTimeout(tmr);
-            tmr = null;
+            clearTimeout(ctx.res.timeout);
         }
     };
 };
