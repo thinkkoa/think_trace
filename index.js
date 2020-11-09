@@ -28,11 +28,12 @@ const htmlRend = async function (app, ctx, options, body) {
         return null;
     }
     let res = '', stack = '';
-    const resBody = {};
-    resBody[options.error_key] = ctx.status;
-    resBody[options.error_msg] = ctx.message;
+    const resBody = {
+        code: ctx.status,
+        message: ctx.message,
+    };
     if (lib.isError(body)) {
-        resBody[options.error_msg] = body.message;
+        resBody.message = body.message;
         stack = body.stack;
     }
 
@@ -46,9 +47,9 @@ const htmlRend = async function (app, ctx, options, body) {
             res = await lib.readFile(`${options.error_path}/${ctx.status}.html`, 'utf-8');
         }
     } else {
-        res = `<!DOCTYPE html><html><head><title>Error - ${resBody[options.error_key]}</title><meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1.0, maximum-scale=1.0">
+        res = `<!DOCTYPE html><html><head><title>Error - ${resBody.code}</title><meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1.0, maximum-scale=1.0">
             <style>body {padding: 50px 80px;font: 14px 'Microsoft YaHei','微软雅黑',Helvetica,Sans-serif;}h1, h2 {margin: 0;padding: 10px 0;}h1 {font-size: 2em;}h2 {font-size: 1.2em;font-weight: 200;color: #aaa;}pre {font-size: .8em;}</style>
-            </head><body><div id="error"><h1>Error</h1><p>Oops! Your visit is rejected!</p><h2>Message:</h2><pre><code>${resBody[options.error_msg] || ''}</code></pre>`;
+            </head><body><div id="error"><h1>Error</h1><p>Oops! Your visit is rejected!</p><h2>Message:</h2><pre><code>${resBody.message || ''}</code></pre>`;
         // if (app.app_debug || body.expose) {
         if (app.app_debug) {
             res = `${res}<h2>Stack:</h2><pre><code>${stack || ''}</code></pre>`;
@@ -77,14 +78,14 @@ const jsonRend = function (app, ctx, options, body) {
         // body = (body || {});
         if (lib.isJSONObj(body)) {
             ctx.body = {
-                [options.error_key]: lib.isTrueEmpty(body.status) ? ctx.status : body.status,
-                [options.error_msg]: body.message || ctx.message || '',
+                code: lib.isTrueEmpty(body.status) ? ctx.status : body.status,
+                message: body.message || ctx.message || '',
                 data: body
             };
         } else {
             ctx.body = {
-                [options.error_key]: ctx.status,
-                [options.error_msg]: ctx.message || '',
+                code: ctx.status,
+                message: ctx.message || '',
                 data: body
             };
         }
@@ -94,7 +95,7 @@ const jsonRend = function (app, ctx, options, body) {
     if (lib.isError(body)) {
         message = body.message;
     }
-    return ctx.res.end(`{"${options.error_key}": ${ctx.status},"${options.error_msg}":"${message || ''}"}`);
+    return ctx.res.end(`{"code": ${ctx.status},"message":"${message || ''}"}`);
 };
 
 /**
@@ -130,6 +131,27 @@ const textRend = function (app, ctx, options, body) {
  * @param {*} ctx
  * @param {*} options
  * @param {*} body
+ * @returns {*}
+ */
+const defaultRend = function (app, ctx, options, body) {
+    if (ctx.status < 400) {
+        ctx.body = body || ' ';
+        return null;
+    }
+    let { message } = ctx;
+    if (lib.isError(body)) {
+        message = body.message;
+    }
+    return ctx.res.end(`Error: ${message || ''} `);
+};
+
+/**
+ *
+ *
+ * @param {*} app
+ * @param {*} ctx
+ * @param {*} options
+ * @param {*} body
  * @returns
  */
 const responseBody = async function (app, ctx, options, body) {
@@ -144,8 +166,10 @@ const responseBody = async function (app, ctx, options, body) {
                 await htmlRend(app, ctx, options, body);
                 break;
             case 'text':
-            default:
                 await textRend(app, ctx, options, body);
+                break;
+            default:
+                await defaultRend(app, ctx, options, body);
                 break;
         }
     } catch (err) {
@@ -194,8 +218,6 @@ const catcher = async function (app, ctx, options, err) {
 const defaultOptions = {
     timeout: 10, //http服务超时时间,单位s
     error_code: 500, //发生错误输出的状态码
-    error_key: 'code', //错误码的key
-    error_msg: 'message', //错误消息的key
     error_path: '', //错误模板目录配置.该目录下放置404.html、502.html等,框架会自动根据status进行渲染(支持模板变量,依赖think_view中间件;如果think_view中间件未加载,仅输出模板内容)
 };
 
